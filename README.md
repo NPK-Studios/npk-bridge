@@ -1,2 +1,1 @@
-# sl-bridge
-Official ScriptLock Bridge
+# NPK Studios Bridge
