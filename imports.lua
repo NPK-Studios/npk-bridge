@@ -1,0 +1,1 @@
+Bridge = exports['npk-bridge']:getObject()
