@@ -31,7 +31,7 @@ end
 --@param itemMetadata: table [item metadata, optional]
 --@param itemSlot: number [item slot, optional]
 Bridge.Inventory.addItem = function(playerId, itemName, itemCount, itemMetadata, itemSlot)
-    exports['ox_inventory']:AddItem(playerId, itemName, itemCount, itemMetadata, itemSlot)
+    return exports['ox_inventory']:AddItem(playerId, itemName, itemCount, itemMetadata, itemSlot)
 end
 
 --@param playerId: number [existing player id]
@@ -40,7 +40,7 @@ end
 --@param itemMetadata: table [item metadata, optional]
 --@param itemSlot: number [item slot, optional]
 Bridge.Inventory.removeItem = function(playerId, itemName, itemCount, itemMetadata, itemSlot)
-    exports['ox_inventory']:RemoveItem(playerId, itemName, itemCount, itemMetadata, itemSlot)
+    return exports['ox_inventory']:RemoveItem(playerId, itemName, itemCount, itemMetadata, itemSlot)
 end
 
 --@param playerId: number [existing player id]
@@ -62,4 +62,29 @@ Bridge.Inventory.createShop = function(shopName, data)
 
     Citizen.Wait(100)
     exports['ox_inventory']:RegisterShop(shopName, data)
+end
+
+--@param playerId: number [existing player id]
+--@param itemName: string [item name]
+--@param metadata: table [metadata filter, optional]
+--@return slots: table[] [{name: string, count: number, metadata: table, slot: number}]
+Bridge.Inventory.searchSlots = function(playerId, itemName, metadata)
+    local slots = exports['ox_inventory']:Search(playerId, 'slots', itemName, metadata)
+    return type(slots) == 'table' and slots or {}
+end
+
+--@param playerId: number [existing player id]
+--@param slot: number [inventory slot]
+--@param metadata: table [new item metadata, replaces the current one]
+Bridge.Inventory.setMetadata = function(playerId, slot, metadata)
+    return exports['ox_inventory']:SetMetadata(playerId, tonumber(slot), metadata)
+end
+
+--@param playerId: number [existing player id]
+--@param itemName: string [item name]
+--@param count: number [amount of items, default 1]
+--@param metadata: table [item metadata, optional]
+--@return boolean [true if the player can carry the items]
+Bridge.Inventory.canCarryItem = function(playerId, itemName, count, metadata)
+    return exports['ox_inventory']:CanCarryItem(playerId, itemName, tonumber(count) or 1, metadata) == true
 end

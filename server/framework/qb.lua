@@ -313,7 +313,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.removeMoney = function(playerId, account, amount)
+Bridge.Framework.removeMoney = function(playerId, account, amount, reason)
     local xPlayer = type(playerId) == 'number' and QBCore.Functions.GetPlayer(playerId) or QBCore.Functions.GetPlayerByCitizenId(playerId)
     if not xPlayer then
         if Config.Debug then
@@ -327,7 +327,7 @@ Bridge.Framework.removeMoney = function(playerId, account, amount)
         ['bank'] = 'bank',
         ['black_money'] = 'crypto'
     }
-    xPlayer.Functions.RemoveMoney(accounts[account], amount)
+    xPlayer.Functions.RemoveMoney(accounts[account], amount, reason)
     return true
 end
 
@@ -335,7 +335,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.addMoney = function(playerId, account, amount)
+Bridge.Framework.addMoney = function(playerId, account, amount, reason)
     local xPlayer = type(playerId) == 'number' and QBCore.Functions.GetPlayer(playerId) or QBCore.Functions.GetPlayerByCitizenId(playerId)
     if not xPlayer then
         if Config.Debug then
@@ -349,7 +349,7 @@ Bridge.Framework.addMoney = function(playerId, account, amount)
         ['bank'] = 'bank',
         ['black_money'] = 'crypto'
     }
-    xPlayer.Functions.AddMoney(accounts[account], amount)
+    xPlayer.Functions.AddMoney(accounts[account], amount, reason)
     return true
 end
 

@@ -181,6 +181,7 @@ Config.Society = 'auto'
 Config.BossMenu = 'auto'
 --[[
     auto - will try to detect boss menu system automatically
+    npk-bossmenu - NPKStudios Boss Menu [recommended]
     esx_society - ESX Society Boss Menu
     qbx_management - QBX Management
     qb-management - QB Management

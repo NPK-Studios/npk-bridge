@@ -269,7 +269,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.removeMoney = function(playerId, account, amount)
+Bridge.Framework.removeMoney = function(playerId, account, amount, reason)
     local xPlayer = type(playerId) == 'number' and ESX.GetPlayerFromId(playerId) or ESX.GetPlayerFromIdentifier(playerId)
     if not xPlayer then
         if Config.Debug then
@@ -278,7 +278,7 @@ Bridge.Framework.removeMoney = function(playerId, account, amount)
         return false
     end
 
-    xPlayer.removeAccountMoney(account, amount)
+    xPlayer.removeAccountMoney(account, amount, reason)
     return true
 end
 
@@ -286,14 +286,14 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.addMoney = function(playerId, account, amount)
+Bridge.Framework.addMoney = function(playerId, account, amount, reason)
     local xPlayer = type(playerId) == 'number' and ESX.GetPlayerFromId(playerId) or ESX.GetPlayerFromIdentifier(playerId)
     if not xPlayer then
         Bridge.libs.print.error(('No player found with ID: %s\nInvoker: %s'):format(playerId, GetInvokingResource() or GetCurrentResourceName()))
         return false
     end
 
-    xPlayer.addAccountMoney(account, amount)
+    xPlayer.addAccountMoney(account, amount, reason)
     return true
 end
 
@@ -347,4 +347,88 @@ Bridge.Callback.register('npk-bridge/server/framework/checkPermissions', Bridge.
 --@param itemFunction: function [function to execute when the item is used]
 Bridge.Framework.registerItem = function(itemName, itemFunction)
     ESX.RegisterUsableItem(itemName, itemFunction)
+end
+
+--@param name: string [job name, e.g. 'komis']
+--@param label: string [job label]
+--@param grades: table [list of { grade: number, name: string, label: string, salary: number }]
+--@return boolean [true if the job or its missing grades were created, false if everything already exists or creation failed]
+Bridge.Framework.createJob = function(name, label, grades)
+    if type(name) ~= 'string' or name == '' or type(grades) ~= 'table' or not next(grades) then
+        return false
+    end
+
+    local list = {}
+    for index, grade in ipairs(grades) do
+        local number = tonumber(grade.grade) or (index - 1)
+        list[#list + 1] = {
+            grade = number,
+            name = (type(grade.name) == 'string' and grade.name ~= '') and grade.name or ('grade' .. number),
+            label = (type(grade.label) == 'string' and grade.label ~= '') and grade.label or tostring(number),
+            salary = tonumber(grade.salary) or 0,
+        }
+    end
+    if #list == 0 then return false end
+
+    local loaded, jobs = pcall(ESX.GetJobs)
+    if not loaded or type(jobs) ~= 'table' then return false end
+
+    local existing = jobs[name]
+    if not existing then
+        local created, result = pcall(ESX.CreateJob, name, (type(label) == 'string' and label ~= '') and label or name, list)
+        if created and result then
+            if Bridge.Jobs and Bridge.Jobs.refresh then pcall(Bridge.Jobs.refresh) end
+            return true
+        end
+        return false
+    end
+
+    local queries = {}
+    for _, grade in ipairs(list) do
+        if not (type(existing.grades) == 'table' and existing.grades[tostring(grade.grade)]) then
+            queries[#queries + 1] = {
+                query = 'INSERT INTO job_grades (job_name, grade, name, label, salary, skin_male, skin_female) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                values = { name, grade.grade, grade.name, grade.label, grade.salary, '{}', '{}' },
+            }
+        end
+    end
+    if #queries == 0 then return false end
+
+    local inserted, success = pcall(MySQL.transaction.await, queries)
+    if not (inserted and success) then return false end
+
+    pcall(ESX.RefreshJobs)
+    if Bridge.Jobs and Bridge.Jobs.refresh then pcall(Bridge.Jobs.refresh) end
+    return true
+end
+
+--@param playerId: number|string [existing player id or unique identifier]
+--@return ssn: string|nil [example '123-45-6789']
+Bridge.Framework.getSSN = function(playerId)
+    local xPlayer = type(playerId) == 'number' and ESX.GetPlayerFromId(playerId) or ESX.GetPlayerFromIdentifier(playerId)
+    local identifier = type(playerId) == 'string' and playerId or nil
+
+    if xPlayer then
+        local ssn = xPlayer.ssn
+        if (ssn == nil or ssn == '') and xPlayer.get then
+            ssn = xPlayer.get('ssn')
+        end
+        if ssn ~= nil and ssn ~= '' then
+            return tostring(ssn)
+        end
+        identifier = xPlayer.identifier
+    end
+
+    if not identifier then
+        if Config.Debug then
+            Bridge.libs.print.error(('No player found with ID: %s\nInvoker: %s'):format(playerId, GetInvokingResource() or GetCurrentResourceName()))
+        end
+        return nil
+    end
+
+    local ok, ssn = pcall(MySQL.scalar.await, 'SELECT ssn FROM users WHERE identifier = ?', { identifier })
+    if ok and ssn ~= nil and ssn ~= '' then
+        return tostring(ssn)
+    end
+    return nil
 end

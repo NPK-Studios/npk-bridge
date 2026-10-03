@@ -151,7 +151,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.removeMoney = function(playerId, account, amount)
+Bridge.Framework.removeMoney = function(playerId, account, amount, reason)
      local xPlayer = type(playerId) == 'number' and Ox.GetPlayerFromFilter({ source = playerId }) or Ox.GetPlayerFromFilter({ identifier = playerId })
     if not xPlayer then
         Bridge.libs.print.error(('No player found with ID: %s\nInvoker: %s'):format(playerId, GetInvokingResource() or GetCurrentResourceName()))
@@ -165,7 +165,7 @@ Bridge.Framework.removeMoney = function(playerId, account, amount)
         exports['ox_inventory']:RemoveItem(playerId, 'money', amount)
     elseif account == 'bank' then
         local account = xPlayer.getAccount()
-        account.removeBalance({ amount = amount, message = 'No reason', overdraw = false })
+        account.removeBalance({ amount = amount, message = reason or 'No reason', overdraw = false })
     end
 
     return true
@@ -175,7 +175,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.addMoney = function(playerId, account, amount)
+Bridge.Framework.addMoney = function(playerId, account, amount, reason)
      local xPlayer = type(playerId) == 'number' and Ox.GetPlayerFromFilter({ source = playerId }) or Ox.GetPlayerFromFilter({ identifier = uniqueId })
     if not xPlayer then
         Bridge.libs.print.error(('No player found with ID: %s\nInvoker: %s'):format(playerId, GetInvokingResource() or GetCurrentResourceName()))
@@ -189,7 +189,7 @@ Bridge.Framework.addMoney = function(playerId, account, amount)
         exports['ox_inventory']:AddItem(playerId, 'money', amount)
     elseif account == 'bank' then
         local account = xPlayer.getAccount()
-        account.addBalance({ amount = amount, message = 'No reason' })
+        account.addBalance({ amount = amount, message = reason or 'No reason' })
     end
     return true
 end

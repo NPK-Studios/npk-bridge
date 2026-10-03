@@ -3,7 +3,7 @@ game 'gta5'
 author 'NPKStudios [www.npkstudios.pl]'
 lua54 'yes'
 description 'NPKStudios - Official Bridge'
-version '1.0.0'
+version '0.0.1'
 
 client_scripts {
     'client/main.lua',
@@ -42,6 +42,7 @@ server_scripts {
     'server/dispatch/*.lua',
     'server/notify/*.lua',
     'server/society/*.lua',
+    'server/bossmenu/*.lua',
     'server/banking/*.lua',
     'server/metadata/*.lua',
     'server/jobs/*.lua',

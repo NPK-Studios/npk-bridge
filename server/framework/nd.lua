@@ -153,7 +153,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.removeMoney = function(playerId, account, amount)
+Bridge.Framework.removeMoney = function(playerId, account, amount, reason)
     local xPlayer = type(playerId) == 'number' and exports["ND_Core"]:getPlayer(playerId) or Bridge.Framework.getPlayerByUniqueId(playerId)
     if not xPlayer then
         Bridge.libs.print.error(('No player found with ID: %s\nInvoker: %s'):format(playerId, GetInvokingResource() or GetCurrentResourceName()))
@@ -165,7 +165,7 @@ Bridge.Framework.removeMoney = function(playerId, account, amount)
         ['bank'] = 'bank',
     }
 
-    xPlayer.deductMoney(accounts[account], amount, "")
+    xPlayer.deductMoney(accounts[account], amount, reason or "")
     return true
 end
 
@@ -173,7 +173,7 @@ end
 --@param account: string [account type, e.g., 'money', 'bank', 'black_money']
 --@param amount: number [amount to add]
 --@return boolean [true if money was added successfully, false otherwise]
-Bridge.Framework.addMoney = function(playerId, account, amount)
+Bridge.Framework.addMoney = function(playerId, account, amount, reason)
     local xPlayer = type(playerId) == 'number' and exports["ND_Core"]:getPlayer(playerId) or Bridge.Framework.getPlayerByUniqueId(playerId)
     if not xPlayer then
         Bridge.libs.print.error(('No player found with ID: %s\nInvoker: %s'):format(playerId, GetInvokingResource() or GetCurrentResourceName()))
@@ -184,7 +184,7 @@ Bridge.Framework.addMoney = function(playerId, account, amount)
         ['money'] = 'cash',
         ['bank'] = 'bank',
     }
-    xPlayer.addMoney(accounts[account], amount, "")
+    xPlayer.addMoney(accounts[account], amount, reason or "")
     return true
 end
 

@@ -37,3 +37,21 @@ Bridge.Society.getMoney = function(playerId, jobName)
     end
     return 0
 end
+local ensuredAccounts = {}
+
+--@param jobName: string
+--@param label: string|nil
+--@return boolean [true when the society account exists or was created]
+Bridge.Society.ensureAccount = function(jobName, label)
+    if type(jobName) ~= 'string' or jobName == '' then return false end
+    if ensuredAccounts[jobName] then return true end
+
+    local name = ('society_%s'):format(jobName)
+    local ok = pcall(function()
+        if not MySQL.scalar.await('SELECT 1 FROM addon_account WHERE name = ?', { name }) then
+            exports['esx_addonaccount']:AddSharedAccount({ name = name, label = label or jobName })
+        end
+    end)
+    ensuredAccounts[jobName] = ok or nil
+    return ok
+end

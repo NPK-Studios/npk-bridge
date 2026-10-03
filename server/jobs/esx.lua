@@ -81,27 +81,62 @@ end
 --@param label: string
 --@param grades: table [list of { grade, name, label, salary? }]
 --@return boolean
+-- Standardowy schemat es_extended ma w job_grades kolumny skin_male/skin_female
+-- NOT NULL bez defaultu — bez nich insert pada. Sprawdzamy raz, czy istnieja.
+local hasSkinColumns
+
+local function gradesHaveSkinColumns()
+    if hasSkinColumns == nil then
+        local ok, count = pcall(MySQL.scalar.await,
+            "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_grades' AND COLUMN_NAME = 'skin_male'")
+        hasSkinColumns = (ok and tonumber(count) or 0) > 0
+    end
+    return hasSkinColumns
+end
+
 Bridge.Jobs.create = function(name, label, grades)
     if type(name) ~= 'string' or name == '' then return false end
 
-    local ok = pcall(function()
-        MySQL.insert.await('INSERT INTO jobs (name, label) VALUES (?, ?) ON DUPLICATE KEY UPDATE label = VALUES(label)',
-            { name, label or name })
-        MySQL.update.await('DELETE FROM job_grades WHERE job_name = ?', { name })
+    local withSkin = gradesHaveSkinColumns()
 
-        for _, grade in ipairs(grades or {}) do
-            MySQL.insert.await('INSERT INTO job_grades (job_name, grade, name, label, salary) VALUES (?, ?, ?, ?, ?)', {
-                name,
-                tonumber(grade.grade) or 0,
-                (grade.name and grade.name ~= '') and grade.name or ('grade' .. tostring(grade.grade or 0)),
-                grade.label or tostring(grade.grade or 0),
-                tonumber(grade.salary) or 0,
-            })
+    -- Jedna transakcja: DELETE + INSERT-y razem, wiec gdy cokolwiek padnie,
+    -- istniejace grady zostaja nietkniete (rollback).
+    local queries = {
+        { 'INSERT INTO jobs (name, label) VALUES (?, ?) ON DUPLICATE KEY UPDATE label = VALUES(label)',
+            { name, label or name } },
+        { 'DELETE FROM job_grades WHERE job_name = ?', { name } },
+    }
+
+    for _, grade in ipairs(grades or {}) do
+        local values = {
+            name,
+            tonumber(grade.grade) or 0,
+            (grade.name and grade.name ~= '') and grade.name or ('grade' .. tostring(grade.grade or 0)),
+            grade.label or tostring(grade.grade or 0),
+            tonumber(grade.salary) or 0,
+        }
+        if withSkin then
+            values[#values + 1] = '{}'
+            values[#values + 1] = '{}'
+            queries[#queries + 1] = {
+                'INSERT INTO job_grades (job_name, grade, name, label, salary, skin_male, skin_female) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                values,
+            }
+        else
+            queries[#queries + 1] = {
+                'INSERT INTO job_grades (job_name, grade, name, label, salary) VALUES (?, ?, ?, ?, ?)',
+                values,
+            }
         end
-    end)
+    end
 
-    if ok then Bridge.Jobs.refresh() end
-    return ok
+    local ok, success = pcall(MySQL.transaction.await, queries)
+    if not (ok and success) then return false end
+
+    Bridge.Jobs.refresh()
+    -- Odswiez runtime ESX, zeby nowe joby/grady dzialaly bez restartu serwera.
+    if ESX and ESX.RefreshJobs then pcall(ESX.RefreshJobs) end
+    return true
 end
 
 --@param uniqueId: string

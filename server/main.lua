@@ -22,12 +22,37 @@ RegisterNetEvent('npk-bridge:cbResponseServer', function(cbId, ...)
     end
 end)
 
+local _callbackHandlers = {}
+
+local function trackCallback(name, handler)
+    local owner = GetInvokingResource() or GetCurrentResourceName()
+    _callbackHandlers[owner] = _callbackHandlers[owner] or {}
+    if _callbackHandlers[owner][name] then
+        RemoveEventHandler(_callbackHandlers[owner][name])
+    end
+    _callbackHandlers[owner][name] = handler
+end
+
+AddEventHandler('onResourceStop', function(resource)
+    local handlers = _callbackHandlers[resource]
+    if not handlers then return end
+    for _, handler in pairs(handlers) do
+        RemoveEventHandler(handler)
+    end
+    _callbackHandlers[resource] = nil
+end)
+
 function Bridge.Callback.register(name, fn)
-    RegisterNetEvent(name, function(cbId, ...)
+    trackCallback(name, RegisterNetEvent(name, function(cbId, ...)
         local src = source
-        local result = {fn(src, ...)}
-        TriggerClientEvent('npk-bridge:cbResponse', src, cbId, table.unpack(result))
-    end)
+        local result = table.pack(pcall(fn, src, ...))
+        if not result[1] then
+            Bridge.libs.print.error(('[Callback] %s: %s'):format(name, tostring(result[2])))
+            TriggerClientEvent('npk-bridge:cbResponse', src, cbId)
+            return
+        end
+        TriggerClientEvent('npk-bridge:cbResponse', src, cbId, table.unpack(result, 2, result.n))
+    end))
 end
 
 function Bridge.Callback.await(name, playerId, ...)
